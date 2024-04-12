@@ -1,3 +1,6 @@
+use std::time::Duration;
+mod future_test;
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -80,30 +83,52 @@ impl eframe::App for TemplateApp {
             }
 
             ui.separator();
+            
+            if ui.button("Test Task").clicked() {
+                let ( executor, spawner) = future_test::new_executor_and_spawner();
 
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/master/",
-                "Source code."
-            ));
+                // Spawn a task to print before and after waiting on a timer.
+                spawner.spawn(  async {
+                    println!("howdy!");
+                    // Wait for our timer future to complete after two seconds.
+                    future_test::TimerFuture::new(Duration::new(2, 0)).await;
+                    println!("done!");
+                });
+                
+                spawner.spawn(async {
+                    future_test::TimerFuture::new(Duration::new(1, 0)).await;
+                    println!("Second");
+                });
+                // Drop the spawner so that our executor knows it is finished and won't
+                // receive more incoming tasks to run.
+                drop(spawner);
+                // Run the executor until the task queue is empty.
+                // This will print "howdy!", pause, and then print "done!".
+                executor.run();
+            }
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                powered_by_egui_and_eframe(ui);
+                // ui.add(egui::github_link_file!(
+                //     "https://github.com/emilk/eframe_template/blob/master/",
+                //     "Source code."
+                // ));
+                // powered_by_egui_and_eframe(ui);
                 egui::warn_if_debug_build(ui);
             });
         });
     }
 }
 
-fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.label("Powered by ");
-        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        ui.label(" and ");
-        ui.hyperlink_to(
-            "eframe",
-            "https://github.com/emilk/egui/tree/master/crates/eframe",
-        );
-        ui.label(".");
-    });
-}
+// fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
+//     ui.horizontal(|ui| {
+//         ui.spacing_mut().item_spacing.x = 0.0;
+//         ui.label("Powered by ");
+//         ui.hyperlink_to("egui", "https://github.com/emilk/egui");
+//         ui.label(" and ");
+//         ui.hyperlink_to(
+//             "eframe",
+//             "https://github.com/emilk/egui/tree/master/crates/eframe",
+//         );
+//         ui.label(".");
+//     });
+// }

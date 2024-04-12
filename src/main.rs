@@ -18,7 +18,7 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     eframe::run_native(
-        "eframe template",
+        "대게 프로그래밍",
         native_options,
         Box::new(|cc| Box::new(eframe_template::TemplateApp::new(cc))),
     )
