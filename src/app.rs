@@ -1,5 +1,10 @@
 use std::time::Duration;
+
+use futures::executor::block_on;
+
+use self::tutorial1::Tutorial1;
 mod future_test;
+mod tutorial1;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -17,7 +22,7 @@ impl Default for TemplateApp {
         Self {
             // Example stuff:
             label: "Hello World!".to_owned(),
-            value: 2.7,
+            value: 3.,
         }
     }
 }
@@ -70,7 +75,7 @@ impl eframe::App for TemplateApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
+            ui.hyperlink_to("Tstory Self Study", "https://countjung.tistory.com/");
 
             ui.horizontal(|ui| {
                 ui.label("Write something: ");
@@ -83,24 +88,35 @@ impl eframe::App for TemplateApp {
             }
 
             ui.separator();
-            
+            ui.heading("Console Tutorial Area - Blocks UI, Watch Console");
+            ui.horizontal(|ui| {
+                if ui.button("Tutorial1 - Number Guess").clicked() {
+                    let tutorial=Tutorial1::new();
+                    Tutorial1::string_inout_test(&tutorial);
+                }
+                ui.add_space(10.);
+            });
+
+            ui.separator();
+            ui.heading("Application Task Test - Not Work on Web");
             if ui.button("Test Task").clicked() {
-                let ( executor, spawner) = future_test::new_executor_and_spawner();
+                let (executor, spawner) = future_test::new_executor_and_spawner();
 
                 // Spawn a task to print before and after waiting on a timer.
-                spawner.spawn(  async {
+                spawner.spawn(async {
                     println!("howdy!");
                     // Wait for our timer future to complete after two seconds.
                     future_test::TimerFuture::new(Duration::new(2, 0)).await;
                     println!("done!");
                 });
-                
+
                 spawner.spawn(async {
                     future_test::TimerFuture::new(Duration::new(1, 0)).await;
                     println!("Second");
                 });
                 // Drop the spawner so that our executor knows it is finished and won't
                 // receive more incoming tasks to run.
+                block_on(async_main());
                 drop(spawner);
                 // Run the executor until the task queue is empty.
                 // This will print "howdy!", pause, and then print "done!".
@@ -132,3 +148,33 @@ impl eframe::App for TemplateApp {
 //         ui.label(".");
 //     });
 // }
+
+async fn learn_song() {
+    println!("Learn Song");
+}
+async fn sing_song() {
+    println!("Add Sing to Song + song");
+}
+async fn dance() {
+    println!("Dancing");
+}
+
+async fn learn_and_sing() {
+    // Wait until the song has been learned before singing it.
+    // We use `.await` here rather than `block_on` to prevent blocking the
+    // thread, which makes it possible to `dance` at the same time.
+    learn_song().await;
+    sing_song().await;
+}
+
+async fn async_main() {
+    let f1 = learn_and_sing();
+    let f2 = dance();
+
+    // `join!` is like `.await` but can wait for multiple futures concurrently.
+    // If we're temporarily blocked in the `learn_and_sing` future, the `dance`
+    // future will take over the current thread. If `dance` becomes blocked,
+    // `learn_and_sing` can take back over. If both futures are blocked, then
+    // `async_main` is blocked and will yield to the executor.
+    futures::join!(f1, f2);
+}

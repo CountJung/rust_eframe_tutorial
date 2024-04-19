@@ -16,6 +16,7 @@ eframe = { version = "0.27.0", default-features = false, features = [
 ] }
 log = "0.4"
 futures = "0.3"
+rand = "0.8.5"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
